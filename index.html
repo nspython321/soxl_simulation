@@ -1,0 +1,1831 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>レバレッジETF シミュレーター</title>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 0;
+        }
+        
+        .sidebar {
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 1px solid #dee2e6;
+            max-height: 1200px;
+            overflow-y: auto;
+        }
+        
+        .main {
+            padding: 30px;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.95em;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #dee2e6;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+        }
+        
+        .control-group input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .value-display {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .value-display.highlight {
+            background: #ff6b6b;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .stat-card h3 {
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .stat-card .value {
+            font-size: 1.6em;
+            font-weight: 700;
+        }
+        
+        .section-divider {
+            margin: 20px 0;
+            border-top: 2px solid #dee2e6;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        
+        .info-box h4 {
+            color: #0066cc;
+            margin-bottom: 8px;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+        }
+        
+        .warning-box h4 {
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        
+        #run-simulation:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        #run-simulation:active {
+            transform: translateY(0);
+        }
+        
+        #run-simulation:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        #toggle-dist-x-scale:hover,
+        #toggle-dist-y-scale:hover {
+            background: #764ba2;
+            transform: translateY(-1px);
+        }
+        
+        #toggle-dist-x-scale:active,
+        #toggle-dist-y-scale:active {
+            transform: translateY(0);
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 レバレッジETF シミュレーター</h1>
+            <p>対数正規分布モデルによる資産分布とモンテカルロシミュレーション</p>
+            <p style="font-size: 0.9em; opacity: 0.9; margin-top: 8px;">
+                💡 初期値はSOXL（半導体3倍レバレッジETF）に合わせて設定しています
+            </p>
+            <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.15); border-radius: 10px; font-size: 0.95em;">
+                <strong>💰 L倍レバレッジETFの複利込み平均年利（倍）の原則</strong><br>
+                <div id="formula-display" style="margin-top: 15px; font-size: 1.3em; background: rgba(255,255,255,0.2); padding: 15px; border-radius: 5px; text-align: center;">
+                    <!-- MathJax formula will be rendered here -->
+                </div>
+                <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; font-size: 0.9em;">
+                    <div>①増価<br><span id="label-1"></span></div>
+                    <div>②減価<br><span id="label-2"></span></div>
+                    <div>③金利<br><span id="label-3"></span></div>
+                    <div>④経費<br><span id="label-4"></span></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="sidebar">
+                <h2 style="margin-bottom: 20px; color: #667eea;">⚙️ パラメータ設定</h2>
+                
+                <div class="control-group">
+                    <label>⏱️ 投資期間 (T年) <span class="value-display highlight" id="T-value">1</span></label>
+                    <input type="range" id="T" min="1" max="20" step="1" value="1">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        期間が長いほど分布が広がります
+                    </small>
+                </div>
+                
+                <div class="section-divider"></div>
+                
+                <div class="control-group">
+                    <label>レバレッジ (L) <span class="value-display" id="L-value">3.0</span></label>
+                    <input type="range" id="L" min="1" max="5" step="0.1" value="3.0">
+                </div>
+                
+                <div class="section-divider"></div>
+                
+                <div class="control-group">
+                    <label>ドリフト (μ) <span class="value-display" id="mu-value">0.14</span></label>
+                    <input type="range" id="mu" min="0" max="0.3" step="0.01" value="0.14">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        年間期待リターン率
+                    </small>
+                </div>
+                
+                <div class="control-group">
+                    <label>ボラティリティ (σ) <span class="value-display" id="sigma-value">0.34</span></label>
+                    <input type="range" id="sigma" min="0.01" max="0.5" step="0.01" value="0.34">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        年間変動率
+                    </small>
+                </div>
+                
+                <div class="section-divider"></div>
+                
+                <div class="control-group">
+                    <label>金利 (b) <span class="value-display" id="b-value">0.030</span></label>
+                    <input type="range" id="b" min="0" max="0.1" step="0.005" value="0.03">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        レバレッジコスト
+                    </small>
+                </div>
+                
+                <div class="control-group">
+                    <label>経費 (c) <span class="value-display" id="c-value">0.0095</span></label>
+                    <input type="range" id="c" min="0" max="0.1" step="0.0005" value="0.0095">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        年間運用経費率
+                    </small>
+                </div>
+                
+                <div class="section-divider"></div>
+                
+                <div class="control-group">
+                    <label>🎲 シミュレーション回数 <span class="value-display highlight" id="simulations-value">100</span></label>
+                    <input type="range" id="simulations" min="1" max="5000" step="1" value="100">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        モンテカルロの試行回数（1〜5,000回、多いほど精度向上）
+                    </small>
+                </div>
+                
+                <div class="section-divider"></div>
+                
+                <div class="control-group">
+                    <button id="run-simulation" style="
+                        width: 100%;
+                        padding: 15px;
+                        font-size: 1.1em;
+                        font-weight: bold;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                    ">
+                        🚀 シミュレーション実行
+                    </button>
+                    <div id="loading" style="
+                        display: none;
+                        text-align: center;
+                        margin-top: 15px;
+                        padding: 10px;
+                        background: #f8f9fa;
+                        border-radius: 5px;
+                        color: #667eea;
+                        font-weight: bold;
+                    ">
+                        ⏳ 計算中...
+                    </div>
+                </div>
+                
+                <div class="section-divider"></div>
+                
+                <div class="control-group">
+                    <label>📏 線形スケールY軸最大値 <span class="value-display" id="ymax-value">1000</span></label>
+                    <input type="range" id="ymax" min="100" max="5000" step="100" value="1000">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        線形スケール時のグラフ3のY軸上限（万円）
+                    </small>
+                </div>
+                
+                <div class="info-box" style="margin-top: 30px;">
+                    <h4>💡 投資期間の影響</h4>
+                    <p style="font-size: 0.9em;">
+                        期間が長いほど：<br>
+                        • 分布が横に広がる<br>
+                        • 期待値と最頻値の乖離が拡大<br>
+                        • ボラティリティ減価が顕著に
+                    </p>
+                </div>
+                
+                <div class="warning-box">
+                    <h4>⚠️ 注意</h4>
+                    <p style="font-size: 0.9em;">
+                        長期投資では複利効果とボラティリティ減価の両方が影響します
+                    </p>
+                </div>
+                
+                <div class="info-box" style="background: #e8f5e9; border-left-color: #4caf50;">
+                    <h4 style="color: #2e7d32;">✅ シミュレーションモデル</h4>
+                    <p style="font-size: 0.9em;">
+                        <strong>2段階日次リバランスモデル</strong>を採用<br>
+                        <strong>ステップ1:</strong> 原指数（SOX）をシミュレーション<br>
+                        <strong>ステップ2:</strong> レバレッジETFが原指数に連動<br>
+                        • 原指数の日次リターンをL倍に増幅<br>
+                        • 毎日コストを控除<br>
+                        • 実際のレバレッジETFの動作を正確に再現
+                    </p>
+                </div>
+                
+                <div class="warning-box" style="margin-top: 15px;">
+                    <h4>⚠️ 実際の株価との乖離について</h4>
+                    <p style="font-size: 0.9em;">
+                        <strong>このシミュレーションは「不確実性」をモデル化</strong><br>
+                        • 実際の株価は「1つの実現値」<br>
+                        • シミュレーションは「起こりうる無数の可能性」<br>
+                        • 過去の実績≠未来の確率分布<br>
+                        • ドリフト(μ)は過去データから推定した仮定値<br>
+                        <br>
+                        <strong>💡 異なる視点:</strong><br>
+                        実際の株価 = 天気予報の「実際の天気」<br>
+                        このシミュレーション = 天気予報の「降水確率分布」
+                    </p>
+                </div>
+            </div>
+            
+            <div class="main">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>投資期間</h3>
+                        <div class="value" id="period-display">1年</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>リスクプレミアム</h3>
+                        <div class="value" id="risk-premium">0.180</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>中央値優位上限</h3>
+                        <div class="value" id="median-limit">L = 8.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>最頻値優位上限</h3>
+                        <div class="value" id="mode-limit">L = 2.00</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">📈 グラフ1: 資産分布の比較（投資期間: <span id="chart1-period">1</span>年後）</div>
+                    <div id="distribution-chart"></div>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center;">
+                            <div>
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">期待値比</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #667eea;" id="mean-ratio">-</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">中央値比</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #28a745;" id="median-ratio">-</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 5px;">最頻値比</div>
+                                <div style="font-size: 1.5em; font-weight: bold; color: #dc3545;" id="mode-ratio">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <div class="chart-title" style="margin-bottom: 0;">🎲 グラフ2: モンテカルロシミュレーション（初期投資100万円、投資期間: <span id="chart3-period">1</span>年、<span id="chart3-simulations">100</span>回試行、日次計算・252営業日/年）</div>
+                        <div>
+                            <button id="toggle-log-scale" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                線形スケールに切替
+                            </button>
+                        </div>
+                    </div>
+                    <div id="montecarlo-chart"></div>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 1em;">L=1 通常ETF (<span id="sim-count-1">100</span>回の結果)</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                    <div style="color: #666;">平均値:</div>
+                                    <div style="font-weight: bold; color: #0066cc;" id="mc-mean-1">-</div>
+                                    <div style="color: #666;">理論期待値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="mc-theory-mean-1">-</div>
+                                    <div style="color: #666;">中央値:</div>
+                                    <div style="font-weight: bold; color: #0066cc;" id="mc-median-1">-</div>
+                                    <div style="color: #666;">理論中央値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="mc-theory-median-1">-</div>
+                                    <div style="color: #666;">理論最頻値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="mc-theory-mode-1">-</div>
+                                    <div style="color: #666;">最大値:</div>
+                                    <div style="font-weight: bold; color: #28a745;" id="mc-max-1">-</div>
+                                    <div style="color: #666;">最小値:</div>
+                                    <div style="font-weight: bold; color: #dc3545;" id="mc-min-1">-</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 1em;">L=<span id="mc-L-display">3.0</span> レバレッジETF (<span id="sim-count-L">100</span>回の結果)</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                    <div style="color: #666;">平均値:</div>
+                                    <div style="font-weight: bold; color: #ff8c00;" id="mc-mean-L">-</div>
+                                    <div style="color: #666;">理論期待値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="mc-theory-mean-L">-</div>
+                                    <div style="color: #666;">中央値:</div>
+                                    <div style="font-weight: bold; color: #ff8c00;" id="mc-median-L">-</div>
+                                    <div style="color: #666;">理論中央値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="mc-theory-median-L">-</div>
+                                    <div style="color: #666;">理論最頻値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="mc-theory-mode-L">-</div>
+                                    <div style="color: #666;">最大値:</div>
+                                    <div style="font-weight: bold; color: #28a745;" id="mc-max-L">-</div>
+                                    <div style="color: #666;">最小値:</div>
+                                    <div style="font-weight: bold; color: #dc3545;" id="mc-min-L">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px; font-size: 0.9em;">
+                            <strong>💡 理論値の見方：</strong><br>
+                            <span style="color: #666;">
+                            • <strong>期待値（破線）</strong>：シミュレーション平均に近い（少数の大成功が引き上げる）<br>
+                            • <strong>中央値（実線）</strong>：半数がこれより上、半数が下<br>
+                            • <strong>最頻値（点線）</strong>：確率密度が最大の点（試行回数が多いほど明確になる）
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">📊 グラフ3: モンテカルロ最終資産分布（<span id="chart4-period">1</span>年後、<span id="chart4-simulations">100</span>回試行）</div>
+                    <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                        <button id="toggle-dist-x-scale" style="
+                            padding: 8px 16px;
+                            background: #667eea;
+                            color: white;
+                            border: none;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            font-size: 0.9em;
+                            font-weight: bold;
+                            transition: all 0.3s;
+                        ">X軸: 線形に切替</button>
+                        <button id="toggle-dist-y-scale" style="
+                            padding: 8px 16px;
+                            background: #667eea;
+                            color: white;
+                            border: none;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            font-size: 0.9em;
+                            font-weight: bold;
+                            transition: all 0.3s;
+                        ">Y軸: 対数に切替</button>
+                    </div>
+                    <div style="position: relative; height: 450px;">
+                        <canvas id="distribution-mc-chart"></canvas>
+                    </div>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 1em;">L=1 通常ETF 分布統計</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                    <div style="color: #666;">実測平均:</div>
+                                    <div style="font-weight: bold; color: #0066cc;" id="dist-mean-1">-</div>
+                                    <div style="color: #666;">理論期待値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="dist-theory-mean-1">-</div>
+                                    <div style="color: #666;">実測中央値:</div>
+                                    <div style="font-weight: bold; color: #0066cc;" id="dist-median-1">-</div>
+                                    <div style="color: #666;">理論中央値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="dist-theory-median-1">-</div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 1em;">L=<span id="dist-L-display">3.0</span> レバレッジETF 分布統計</h4>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                    <div style="color: #666;">実測平均:</div>
+                                    <div style="font-weight: bold; color: #ff8c00;" id="dist-mean-L">-</div>
+                                    <div style="color: #666;">理論期待値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="dist-theory-mean-L">-</div>
+                                    <div style="color: #666;">実測中央値:</div>
+                                    <div style="font-weight: bold; color: #ff8c00;" id="dist-median-L">-</div>
+                                    <div style="color: #666;">理論中央値:</div>
+                                    <div style="font-weight: bold; color: #666;" id="dist-theory-median-L">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding: 12px; background: #e7f3ff; border-left: 4px solid #0066cc; border-radius: 5px; font-size: 0.9em;">
+                            <strong>💡 ヒント：</strong><br>
+                            <span style="color: #666;">
+                            試行回数を増やすほど、ヒストグラムが理論分布曲線（実線）に近づきます。<br>
+                            10,000回で実測値と理論値がほぼ一致することを確認できます。
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">🏆 グラフ4: レバレッジETF vs 通常ETF 勝敗（<span id="chart4-win-simulations">100</span>回試行）</div>
+                    <div style="position: relative; height: 400px; max-width: 500px; margin: 0 auto;">
+                        <canvas id="win-loss-chart"></canvas>
+                    </div>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
+                            <div>
+                                <h4 style="color: #ff8c00; margin-bottom: 10px; font-size: 1.1em;">🏆 L=<span id="win-L-display">3.0</span> 勝利</h4>
+                                <div style="font-size: 2em; font-weight: bold; color: #ff8c00;" id="leverage-wins">-</div>
+                                <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                                    勝率: <span style="font-weight: bold; color: #ff8c00;" id="leverage-win-rate">-</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style="color: #0066cc; margin-bottom: 10px; font-size: 1.1em;">🛡️ L=1 勝利</h4>
+                                <div style="font-size: 2em; font-weight: bold; color: #0066cc;" id="normal-wins">-</div>
+                                <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                                    勝率: <span style="font-weight: bold; color: #0066cc;" id="normal-win-rate">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px; font-size: 0.9em;">
+                            <strong>💡 勝敗の判定：</strong><br>
+                            <span style="color: #666;">
+                            各シミュレーション試行で、<span id="chart4-period-display">1</span>年後の最終資産額を比較。<br>
+                            レバレッジETF（L=<span id="win-L-display2">3.0</span>）の資産が通常ETF（L=1）より多ければレバレッジの勝利。<br>
+                            試行回数を増やすほど、勝率の精度が向上します。
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">💥 グラフ5: 破産確率（資産が初期値の1/4以下になる確率、<span id="chart5-simulations">100</span>回試行）</div>
+                    <div style="position: relative; height: 400px; max-width: 600px; margin: 0 auto;">
+                        <canvas id="bankruptcy-chart"></canvas>
+                    </div>
+                    <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: center;">
+                            <div>
+                                <h4 style="color: #0066cc; margin-bottom: 10px; font-size: 1.1em;">🛡️ L=1 通常ETF</h4>
+                                <div style="font-size: 2em; font-weight: bold; color: #0066cc;" id="normal-bankruptcy-rate">-</div>
+                                <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                                    破産回数: <span style="font-weight: bold; color: #0066cc;" id="normal-bankruptcy-count">-</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style="color: #ff8c00; margin-bottom: 10px; font-size: 1.1em;">💥 L=<span id="bankruptcy-L-display">3.0</span> レバレッジETF</h4>
+                                <div style="font-size: 2em; font-weight: bold; color: #ff8c00;" id="leverage-bankruptcy-rate">-</div>
+                                <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                                    破産回数: <span style="font-weight: bold; color: #ff8c00;" id="leverage-bankruptcy-count">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 15px; padding: 12px; background: #ffebee; border-left: 4px solid #dc3545; border-radius: 5px; font-size: 0.9em;">
+                            <strong>💡 破産の定義：</strong><br>
+                            <span style="color: #666;">
+                            各シミュレーション試行で、<span id="chart5-period-display">1</span>年後の最終資産が初期投資額（100万円）の<strong>1/4（25万円）以下</strong>になった場合を「破産」と定義。<br>
+                            レバレッジETFは、ボラティリティドラッグにより通常ETFより破産確率が高くなる傾向があります。<br>
+                            試行回数を増やすほど、破産確率の精度が向上します。
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart.js グローバル変数
+        let distributionChart = null;
+        let winLossChart = null;
+        let bankruptcyChart = null;
+        
+        // グラフ4のスケール状態
+        let distScaleState = {
+            xScale: 'logarithmic', // 'logarithmic' or 'linear'
+            yScale: 'linear' // 'linear' or 'logarithmic'
+        };
+        
+        // 数学関数
+        function lognormalPDF(x, alpha, beta) {
+            if (x <= 0 || beta <= 0) return 0;
+            return (1 / (x * beta * Math.sqrt(2 * Math.PI))) * 
+                   Math.exp(-Math.pow(Math.log(x) - alpha, 2) / (2 * beta * beta));
+        }
+        
+        function lognormalMedian(alpha, initialValue = 1) {
+            return initialValue * Math.exp(alpha);
+        }
+        
+        function lognormalMean(alpha, beta, initialValue = 1) {
+            return initialValue * Math.exp(alpha + beta * beta / 2);
+        }
+        
+        function lognormalMode(alpha, beta, initialValue = 1) {
+            return initialValue * Math.exp(alpha - beta * beta);
+        }
+        
+        function getParams(L, mu, sigma, b, c, T) {
+            const sigma2 = sigma * sigma;
+            // T年後のパラメータ（日次リバランスモデルの理論値）
+            // log(S_T / S_0) ~ N(alpha, beta^2)
+            // 日次リバランス: 毎日 L*r_t を乗じた結果の累積分布
+            // alpha = T * [L*μ - (L-1)*b - c - 0.5*L²*σ²] (期待対数リターン)
+            // beta = sqrt(T) * L * σ (累積ボラティリティ)
+            const alpha = T * (L * mu - (L - 1) * b - c - 0.5 * L * L * sigma2);
+            const beta = Math.sqrt(T) * L * sigma;
+            return { alpha, beta };
+        }
+        
+        // Box-Muller法で正規乱数を生成
+        function randomNormal() {
+            const u1 = Math.random();
+            const u2 = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        }
+        
+        // 2段階モンテカルロシミュレーション（より現実的なレバレッジETFモデル）
+        // 原指数のシミュレーション（全シミュレーションで共有）
+        function generateIndexSimulations(mu, sigma, T, numSimulations) {
+            const tradingDaysPerYear = 252;
+            const totalDays = T * tradingDaysPerYear;
+            const dt = 1 / tradingDaysPerYear;
+            const EPS = 1e-10;
+            
+            const indexSimulations = [];
+            
+            for (let sim = 0; sim < numSimulations; sim++) {
+                const indexPrices = [100]; // 原指数の初期値は100
+                let currentIndexPrice = 100;
+                
+                for (let day = 1; day <= totalDays; day++) {
+                    const dW = randomNormal();
+                    const indexReturn = (mu - 0.5 * sigma * sigma) * dt + sigma * Math.sqrt(dt) * dW;
+                    currentIndexPrice = Math.max(EPS, currentIndexPrice * Math.exp(indexReturn));
+                    indexPrices.push(currentIndexPrice);
+                }
+                
+                indexSimulations.push(indexPrices);
+            }
+            
+            return indexSimulations;
+        }
+        
+        // レバレッジETFのシミュレーション（原指数から追跡）
+        function trackIndexWithLeverage(indexSimulations, L, b, c, sigma, initialValue = 100) {
+            const tradingDaysPerYear = 252;
+            const dt = 1 / tradingDaysPerYear;
+            const EPS = 1e-10;
+            
+            // ボラティリティドラッグの補正項を計算
+            // 理論値: 0.5 * L² * σ²
+            // シミュレーションで既に含まれている分: 0.5 * L * σ²
+            // 不足分: 0.5 * L * (L-1) * σ²
+            const sigma2 = sigma * sigma;
+            
+            const trajectories = [];
+            
+            for (let sim = 0; sim < indexSimulations.length; sim++) {
+                const indexPrices = indexSimulations[sim];
+                const trajectory = [initialValue];
+                let currentETFValue = initialValue;
+                
+                for (let day = 1; day < indexPrices.length; day++) {
+                    // 原指数の日次リターンを計算
+                    const dailyIndexReturn = Math.log(indexPrices[day] / indexPrices[day - 1]);
+                    
+                    // レバレッジETFは原指数の日次リターンをL倍に増幅
+                    const leveragedReturn = L * dailyIndexReturn;
+                    
+                    // 不足しているボラティリティドラッグを計算
+                    // (0.5 * L² * σ²) - (0.5 * L * σ²) = 0.5 * L * (L-1) * σ²
+                    const missingDecay = 0.5 * L * (L - 1) * sigma2 * dt;
+                    
+                    // コストファクターに不足分のドラッグを追加
+                    const costFactor = Math.exp(-(L - 1) * b * dt - c * dt - missingDecay);
+                    
+                    currentETFValue = Math.max(EPS, currentETFValue * Math.exp(leveragedReturn) * costFactor);
+                    trajectory.push(currentETFValue);
+                }
+                
+                trajectories.push(trajectory);
+            }
+            
+            return trajectories;
+        }
+        
+        // 最終値を取得
+        function getFinalValues(trajectories) {
+            return trajectories.map(traj => traj[traj.length - 1]);
+        }
+        
+        // 統計量計算
+        function calculateStats(data) {
+            const sorted = [...data].sort((a, b) => a - b);
+            const mean = data.reduce((a, b) => a + b, 0) / data.length;
+            const median = sorted[Math.floor(sorted.length / 2)];
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            
+            return { mean, median, min, max };
+        }
+        
+        function updateCharts() {
+            const T = parseInt(document.getElementById('T').value);
+            const L = parseFloat(document.getElementById('L').value);
+            const mu = parseFloat(document.getElementById('mu').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const b = parseFloat(document.getElementById('b').value);
+            const c = parseFloat(document.getElementById('c').value);
+            const numSimulations = parseInt(document.getElementById('simulations').value);
+            const yMax = parseInt(document.getElementById('ymax').value);
+            
+            // Y軸最大値をグローバルに保存
+            window.linearYMax = yMax;
+            
+            // パラメータ表示更新（グラフ関連のみ）
+            document.getElementById('period-display').textContent = T + '年';
+            document.getElementById('chart1-period').textContent = T;
+            
+            // 統計量計算（期間に依存しない）
+            const riskPremium = mu - b;
+            const sigma2 = sigma * sigma;
+            const medianLimit = (2 * riskPremium / sigma2) - 1;
+            const modeLimit = (2 * riskPremium / (3 * sigma2)) - 1;
+            
+            document.getElementById('risk-premium').textContent = riskPremium.toFixed(3);
+            document.getElementById('median-limit').textContent = 'L = ' + medianLimit.toFixed(2);
+            document.getElementById('mode-limit').textContent = 'L = ' + modeLimit.toFixed(2);
+            
+            // L=1とL=LのパラメータをT年で計算
+            const params1 = getParams(1, mu, sigma, b, c, T);
+            const paramsL = getParams(L, mu, sigma, b, c, T);
+            
+            // X軸の範囲を投資期間に応じて調整
+            const xMax = Math.min(Math.max(10, T * 2), 50);
+            
+            // 分布グラフデータ生成
+            const x = [];
+            const pdf1 = [];
+            const pdfL = [];
+            
+            for (let i = 0.01; i <= xMax; i += xMax/1000) {
+                x.push(i);
+                pdf1.push(lognormalPDF(i, params1.alpha, params1.beta));
+                pdfL.push(lognormalPDF(i, paramsL.alpha, paramsL.beta));
+            }
+            
+            const mean1 = lognormalMean(params1.alpha, params1.beta);
+            const median1 = lognormalMedian(params1.alpha);
+            const mode1 = lognormalMode(params1.alpha, params1.beta);
+            
+            const meanL = lognormalMean(paramsL.alpha, paramsL.beta);
+            const medianL = lognormalMedian(paramsL.alpha);
+            const modeL = lognormalMode(paramsL.alpha, paramsL.beta);
+            
+            // 比率を計算して表示
+            const meanRatio = meanL / mean1;
+            const medianRatio = medianL / median1;
+            const modeRatio = modeL / mode1;
+            
+            document.getElementById('mean-ratio').textContent = meanRatio.toFixed(3) + 'x';
+            document.getElementById('mean-ratio').style.color = meanRatio >= 1 ? '#28a745' : '#dc3545';
+            
+            document.getElementById('median-ratio').textContent = medianRatio.toFixed(3) + 'x';
+            document.getElementById('median-ratio').style.color = medianRatio >= 1 ? '#28a745' : '#dc3545';
+            
+            document.getElementById('mode-ratio').textContent = modeRatio.toFixed(3) + 'x';
+            document.getElementById('mode-ratio').style.color = modeRatio >= 1 ? '#28a745' : '#dc3545';
+            
+            // 分布グラフ描画
+            const distributionData = [
+                {
+                    x: x,
+                    y: pdf1,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'L=1 通常ETF',
+                    line: { color: 'blue', width: 3 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(0,0,255,0.1)'
+                },
+                {
+                    x: x,
+                    y: pdfL,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `L=${L} レバレッジETF`,
+                    line: { color: 'darkorange', width: 3 },
+                    fill: 'tozeroy',
+                    fillcolor: 'rgba(255,140,0,0.1)'
+                },
+                {
+                    x: [mean1, mean1],
+                    y: [0, Math.max(...pdf1) * 0.8],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `L=1 期待値: ${mean1.toFixed(2)}`,
+                    line: { color: 'blue', dash: 'dot', width: 2 }
+                },
+                {
+                    x: [median1, median1],
+                    y: [0, Math.max(...pdf1) * 0.8],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `L=1 中央値: ${median1.toFixed(2)}`,
+                    line: { color: 'blue', dash: 'dash', width: 2 }
+                },
+                {
+                    x: [mode1, mode1],
+                    y: [0, Math.max(...pdf1) * 0.8],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `L=1 最頻値: ${mode1.toFixed(2)}`,
+                    line: { color: 'blue', dash: 'dashdot', width: 2 }
+                },
+                {
+                    x: [meanL, meanL],
+                    y: [0, Math.max(...pdfL) * 0.8],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `L=${L} 期待値: ${meanL.toFixed(2)}`,
+                    line: { color: 'darkorange', dash: 'dot', width: 2 }
+                },
+                {
+                    x: [medianL, medianL],
+                    y: [0, Math.max(...pdfL) * 0.8],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `L=${L} 中央値: ${medianL.toFixed(2)}`,
+                    line: { color: 'darkorange', dash: 'dash', width: 2 }
+                },
+                {
+                    x: [modeL, modeL],
+                    y: [0, Math.max(...pdfL) * 0.8],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: `L=${L} 最頻値: ${modeL.toFixed(2)}`,
+                    line: { color: 'darkorange', dash: 'dashdot', width: 2 }
+                }
+            ];
+            
+            const distributionLayout = {
+                xaxis: { 
+                    title: `${T}年後の資産倍率 (元本=1)`, 
+                    range: [0, xMax]
+                },
+                yaxis: { title: '確率密度' },
+                showlegend: true,
+                legend: { x: 0.65, y: 1, font: { size: 9 } },
+                margin: { l: 60, r: 20, t: 20, b: 60 },
+                height: 450
+            };
+            
+            Plotly.newPlot('distribution-chart', distributionData, distributionLayout, {responsive: true});
+            
+            // モンテカルロシミュレーション（日次）
+            document.getElementById('chart3-period').textContent = T;
+            document.getElementById('chart3-simulations').textContent = numSimulations;
+            document.getElementById('sim-count-1').textContent = numSimulations;
+            document.getElementById('sim-count-L').textContent = numSimulations;
+            document.getElementById('mc-L-display').textContent = L.toFixed(1);
+            
+            const tradingDaysPerYear = 252; // 米国市場の平均営業日数に統一
+            const totalDays = T * tradingDaysPerYear;
+            
+            const initialValue = 100; // 初期投資額: 100万円
+            
+            // 日次シミュレーション実行（動的なシミュレーション回数）
+            // ステップ1: 原指数を生成（全シミュレーションで共有）
+            const indexSimulations = generateIndexSimulations(mu, sigma, T, numSimulations);
+            
+            // ステップ2: 同じ原指数から L=1 と L=設定値 の両方のETFを追跡
+            const trajectories1 = trackIndexWithLeverage(indexSimulations, 1, b, c, sigma, initialValue);
+            const trajectoriesL = trackIndexWithLeverage(indexSimulations, L, b, c, sigma, initialValue);
+            
+            // 最終値の統計
+            const finalValues1 = getFinalValues(trajectories1);
+            const finalValuesL = getFinalValues(trajectoriesL);
+            
+            const stats1 = calculateStats(finalValues1);
+            const statsL = calculateStats(finalValuesL);
+            
+            // 理論値を計算
+            const params1_final = getParams(1, mu, sigma, b, c, T);
+            const paramsL_final = getParams(L, mu, sigma, b, c, T);
+            
+            const theoryMean1 = lognormalMean(params1_final.alpha, params1_final.beta, initialValue);
+            const theoryMedian1 = lognormalMedian(params1_final.alpha, initialValue);
+            const theoryMode1 = lognormalMode(params1_final.alpha, params1_final.beta, initialValue);
+            const theoryMeanL = lognormalMean(paramsL_final.alpha, paramsL_final.beta, initialValue);
+            const theoryMedianL = lognormalMedian(paramsL_final.alpha, initialValue);
+            const theoryModeL = lognormalMode(paramsL_final.alpha, paramsL_final.beta, initialValue);
+            
+            // 統計量表示（万円単位）
+            document.getElementById('mc-mean-1').textContent = stats1.mean.toFixed(1) + '万円';
+            document.getElementById('mc-theory-mean-1').textContent = theoryMean1.toFixed(1) + '万円';
+            document.getElementById('mc-median-1').textContent = stats1.median.toFixed(1) + '万円';
+            document.getElementById('mc-theory-median-1').textContent = theoryMedian1.toFixed(1) + '万円';
+            document.getElementById('mc-theory-mode-1').textContent = theoryMode1.toFixed(1) + '万円';
+            document.getElementById('mc-max-1').textContent = stats1.max.toFixed(1) + '万円';
+            document.getElementById('mc-min-1').textContent = stats1.min.toFixed(1) + '万円';
+            
+            document.getElementById('mc-mean-L').textContent = statsL.mean.toFixed(1) + '万円';
+            document.getElementById('mc-theory-mean-L').textContent = theoryMeanL.toFixed(1) + '万円';
+            document.getElementById('mc-median-L').textContent = statsL.median.toFixed(1) + '万円';
+            document.getElementById('mc-theory-median-L').textContent = theoryMedianL.toFixed(1) + '万円';
+            document.getElementById('mc-theory-mode-L').textContent = theoryModeL.toFixed(1) + '万円';
+            document.getElementById('mc-max-L').textContent = statsL.max.toFixed(1) + '万円';
+            document.getElementById('mc-min-L').textContent = statsL.min.toFixed(1) + '万円';
+            
+            // グラフ用にデータをサンプリング（表示用に間引く）
+            const samplingInterval = Math.max(1, Math.floor(totalDays / 500)); // 最大500ポイント
+            const montecarloData = [];
+            
+            // L=1のシミュレーション軌跡（サンプリング）
+            // 多すぎる場合は透明度を上げる
+            const lineOpacity = numSimulations <= 100 ? 0.15 : Math.max(0.02, 15 / numSimulations);
+            
+            for (let i = 0; i < numSimulations; i++) {
+                const sampledX = [];
+                const sampledY = [];
+                for (let d = 0; d <= totalDays; d += samplingInterval) {
+                    const index = Math.min(Math.floor(d), trajectories1[i].length - 1);
+                    sampledX.push(d / tradingDaysPerYear); // 年単位に変換
+                    sampledY.push(trajectories1[i][index]);
+                }
+                montecarloData.push({
+                    x: sampledX,
+                    y: sampledY,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: `rgba(0, 0, 255, ${lineOpacity})`, width: 1 },
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                });
+            }
+            
+            // L=Lのシミュレーション軌跡（サンプリング）
+            for (let i = 0; i < numSimulations; i++) {
+                const sampledX = [];
+                const sampledY = [];
+                for (let d = 0; d <= totalDays; d += samplingInterval) {
+                    const index = Math.min(Math.floor(d), trajectoriesL[i].length - 1);
+                    sampledX.push(d / tradingDaysPerYear); // 年単位に変換
+                    sampledY.push(trajectoriesL[i][index]);
+                }
+                montecarloData.push({
+                    x: sampledX,
+                    y: sampledY,
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: `rgba(255, 140, 0, ${lineOpacity})`, width: 1 },
+                    showlegend: false,
+                    hoverinfo: 'skip'
+                });
+            }
+            
+            // 理論値の軌跡（年単位）
+            const yearPoints = [];
+            const expectedPath1 = [];
+            const expectedPathL = [];
+            const medianPath1 = [];
+            const medianPathL = [];
+            const modePath1 = [];
+            const modePathL = [];
+            
+            for (let y = 0; y <= T; y += 0.1) {
+                yearPoints.push(y);
+                if (y === 0) {
+                    expectedPath1.push(initialValue);
+                    expectedPathL.push(initialValue);
+                    medianPath1.push(initialValue);
+                    medianPathL.push(initialValue);
+                    modePath1.push(initialValue);
+                    modePathL.push(initialValue);
+                } else {
+                    const p1 = getParams(1, mu, sigma, b, c, y);
+                    const pL = getParams(L, mu, sigma, b, c, y);
+                    expectedPath1.push(lognormalMean(p1.alpha, p1.beta, initialValue));
+                    expectedPathL.push(lognormalMean(pL.alpha, pL.beta, initialValue));
+                    medianPath1.push(lognormalMedian(p1.alpha, initialValue));
+                    medianPathL.push(lognormalMedian(pL.alpha, initialValue));
+                    modePath1.push(lognormalMode(p1.alpha, p1.beta, initialValue));
+                    modePathL.push(lognormalMode(pL.alpha, pL.beta, initialValue));
+                }
+            }
+            
+            // 理論期待値（破線）
+            montecarloData.push({
+                x: yearPoints,
+                y: expectedPath1,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'L=1 理論期待値',
+                line: { color: 'blue', width: 3, dash: 'dash' }
+            });
+            
+            montecarloData.push({
+                x: yearPoints,
+                y: expectedPathL,
+                type: 'scatter',
+                mode: 'lines',
+                name: `L=${L} 理論期待値`,
+                line: { color: 'darkorange', width: 3, dash: 'dash' }
+            });
+            
+            // 理論中央値（実線・細め）
+            montecarloData.push({
+                x: yearPoints,
+                y: medianPath1,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'L=1 理論中央値',
+                line: { color: 'blue', width: 2, dash: 'solid' }
+            });
+            
+            montecarloData.push({
+                x: yearPoints,
+                y: medianPathL,
+                type: 'scatter',
+                mode: 'lines',
+                name: `L=${L} 理論中央値`,
+                line: { color: 'darkorange', width: 2, dash: 'solid' }
+            });
+            
+            // 理論最頻値（点線）
+            montecarloData.push({
+                x: yearPoints,
+                y: modePath1,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'L=1 理論最頻値',
+                line: { color: 'blue', width: 3, dash: 'dot' }
+            });
+            
+            montecarloData.push({
+                x: yearPoints,
+                y: modePathL,
+                type: 'scatter',
+                mode: 'lines',
+                name: `L=${L} 理論最頻値`,
+                line: { color: 'darkorange', width: 3, dash: 'dot' }
+            });
+            
+            // グローバル変数として保存（スケール切り替え用）
+            window.montecarloData = montecarloData;
+            window.montecarloT = T;
+            
+            const yAxisConfig = window.isLogScale !== false 
+                ? { title: '資産額 (万円)', type: 'log' }
+                : { title: '資産額 (万円)', type: 'linear', range: [0, window.linearYMax || 1000] };
+            
+            const montecarloLayout = {
+                xaxis: { title: '投資年数', range: [0, T] },
+                yaxis: yAxisConfig,
+                showlegend: true,
+                legend: { x: 0.02, y: 0.98 },
+                margin: { l: 60, r: 20, t: 20, b: 60 },
+                height: 500
+            };
+            
+            Plotly.newPlot('montecarlo-chart', montecarloData, montecarloLayout, {responsive: true});
+            
+            // グラフ4: モンテカルロ最終資産分布（Chart.js版）
+            document.getElementById('chart4-period').textContent = T;
+            document.getElementById('chart4-simulations').textContent = numSimulations;
+            document.getElementById('dist-L-display').textContent = L.toFixed(1);
+            
+            // 倍率に変換（元本=100万円 → 倍率）
+            const finalRatios1 = finalValues1.map(v => v / initialValue);
+            const finalRatiosL = finalValuesL.map(v => v / initialValue);
+            
+            const statsRatio1 = calculateStats(finalRatios1);
+            const statsRatioL = calculateStats(finalRatiosL);
+            
+            // 理論値も倍率で
+            const theoryMeanRatio1 = theoryMean1 / initialValue;
+            const theoryMedianRatio1 = theoryMedian1 / initialValue;
+            const theoryMeanRatioL = theoryMeanL / initialValue;
+            const theoryMedianRatioL = theoryMedianL / initialValue;
+            
+            // 統計量表示（倍率）
+            document.getElementById('dist-mean-1').textContent = statsRatio1.mean.toFixed(3) + 'x';
+            document.getElementById('dist-theory-mean-1').textContent = theoryMeanRatio1.toFixed(3) + 'x';
+            document.getElementById('dist-median-1').textContent = statsRatio1.median.toFixed(3) + 'x';
+            document.getElementById('dist-theory-median-1').textContent = theoryMedianRatio1.toFixed(3) + 'x';
+            
+            document.getElementById('dist-mean-L').textContent = statsRatioL.mean.toFixed(3) + 'x';
+            document.getElementById('dist-theory-mean-L').textContent = theoryMeanRatioL.toFixed(3) + 'x';
+            document.getElementById('dist-median-L').textContent = statsRatioL.median.toFixed(3) + 'x';
+            document.getElementById('dist-theory-median-L').textContent = theoryMedianRatioL.toFixed(3) + 'x';
+            
+            // Chart.jsでヒストグラムを描画
+            // データを保存（スケール切り替え用）
+            window.lastDistributionData = {
+                finalRatios1: finalRatios1,
+                finalRatiosL: finalRatiosL,
+                L: L,
+                T: T,
+                params1: params1_final,
+                paramsL: paramsL_final,
+                theoryMean1: theoryMeanRatio1,
+                theoryMedian1: theoryMedianRatio1,
+                theoryMeanL: theoryMeanRatioL,
+                theoryMedianL: theoryMedianRatioL
+            };
+            
+            updateDistributionChart(finalRatios1, finalRatiosL, L, T, 
+                params1_final, paramsL_final, 
+                theoryMeanRatio1, theoryMedianRatio1, 
+                theoryMeanRatioL, theoryMedianRatioL);
+            
+            // グラフ4: 勝敗円グラフ
+            updateWinLossChart(finalValues1, finalValuesL, L, T, numSimulations);
+            
+            // グラフ5: 破産確率棒グラフ
+            updateBankruptcyChart(finalValues1, finalValuesL, L, T, numSimulations, initialValue);
+        }
+        
+        // Chart.jsでヒストグラムを描画する関数
+        function updateDistributionChart(finalRatios1, finalRatiosL, L, T, params1, paramsL, 
+            theoryMean1, theoryMedian1, theoryMeanL, theoryMedianL) {
+            
+            // 既存のチャートを破棄
+            if (distributionChart) {
+                distributionChart.destroy();
+            }
+            
+            // データの範囲を計算
+            const allRatios = [...finalRatios1, ...finalRatiosL];
+            const minRatio = Math.min(...allRatios);
+            const maxRatio = Math.max(...allRatios);
+            
+            // ビン数を計算（対数スケールで100ビン）
+            const numBins = 100;
+            const logMin = Math.log(Math.max(0.01, minRatio));
+            const logMax = Math.log(maxRatio * 1.1);
+            const logBinWidth = (logMax - logMin) / numBins;
+            
+            // ビンの中心値を計算（対数空間で等間隔）
+            const binCenters = [];
+            for (let i = 0; i < numBins; i++) {
+                const logCenter = logMin + (i + 0.5) * logBinWidth;
+                binCenters.push(Math.exp(logCenter));
+            }
+            
+            // ヒストグラムを作成（L=1とL=Lの両方）
+            const histogram1 = new Array(numBins).fill(0);
+            const histogramL = new Array(numBins).fill(0);
+            
+            finalRatios1.forEach(ratio => {
+                if (ratio > 0) {
+                    const logRatio = Math.log(ratio);
+                    const binIndex = Math.min(Math.floor((logRatio - logMin) / logBinWidth), numBins - 1);
+                    if (binIndex >= 0) histogram1[binIndex]++;
+                }
+            });
+            
+            finalRatiosL.forEach(ratio => {
+                if (ratio > 0) {
+                    const logRatio = Math.log(ratio);
+                    const binIndex = Math.min(Math.floor((logRatio - logMin) / logBinWidth), numBins - 1);
+                    if (binIndex >= 0) histogramL[binIndex]++;
+                }
+            });
+            
+            // 確率密度に正規化（対数正規分布用）
+            // 各ビンの実空間での幅を計算
+            const binWidths = [];
+            for (let i = 0; i < numBins; i++) {
+                if (i < numBins - 1) {
+                    binWidths.push(binCenters[i + 1] - binCenters[i]);
+                } else {
+                    binWidths.push(binCenters[i] - binCenters[i - 1]);
+                }
+            }
+            
+            // 総カウントで正規化（確率密度に変換）
+            const total1 = finalRatios1.length;
+            const totalL = finalRatiosL.length;
+            
+            const densities1 = histogram1.map((count, i) => {
+                return count / (total1 * binWidths[i]);
+            });
+            
+            const densitiesL = histogramL.map((count, i) => {
+                return count / (totalL * binWidths[i]);
+            });
+            
+            // 理論分布曲線のデータ生成
+            const theoryCurvePoints = 500;
+            const theoryCurve1 = [];
+            const theoryCurveL = [];
+            
+            for (let i = 0; i < theoryCurvePoints; i++) {
+                const ratio = Math.exp(logMin + (i / theoryCurvePoints) * (logMax - logMin));
+                theoryCurve1.push({
+                    x: ratio,
+                    y: lognormalPDF(ratio, params1.alpha, params1.beta)
+                });
+                theoryCurveL.push({
+                    x: ratio,
+                    y: lognormalPDF(ratio, paramsL.alpha, paramsL.beta)
+                });
+            }
+            
+            // Chart.jsでグラフを描画
+            const ctx = document.getElementById('distribution-mc-chart').getContext('2d');
+            
+            distributionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: binCenters.map(x => x.toFixed(3)),
+                    datasets: [
+                        {
+                            label: 'L=1 実測分布',
+                            data: binCenters.map((x, i) => ({ x: x, y: densities1[i] })),
+                            backgroundColor: 'rgba(0, 100, 255, 0.5)',
+                            borderColor: 'rgba(0, 100, 255, 0.8)',
+                            borderWidth: 1,
+                            barPercentage: 1.0,
+                            categoryPercentage: 1.0,
+                            order: 2
+                        },
+                        {
+                            label: `L=${L.toFixed(1)} 実測分布`,
+                            data: binCenters.map((x, i) => ({ x: x, y: densitiesL[i] })),
+                            backgroundColor: 'rgba(255, 140, 0, 0.5)',
+                            borderColor: 'rgba(255, 140, 0, 0.8)',
+                            borderWidth: 1,
+                            barPercentage: 1.0,
+                            categoryPercentage: 1.0,
+                            order: 2
+                        },
+                        {
+                            label: 'L=1 理論分布',
+                            data: theoryCurve1,
+                            type: 'line',
+                            borderColor: 'rgb(0, 0, 255)',
+                            backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            fill: false,
+                            order: 1
+                        },
+                        {
+                            label: `L=${L.toFixed(1)} 理論分布`,
+                            data: theoryCurveL,
+                            type: 'line',
+                            borderColor: 'rgb(255, 140, 0)',
+                            backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            fill: false,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 11 },
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return `資産倍率: ${parseFloat(context[0].label).toFixed(2)}x`;
+                                },
+                                label: function(context) {
+                                    if (context.dataset.type === 'line') {
+                                        return `${context.dataset.label}: 密度 ${context.parsed.y.toFixed(4)}`;
+                                    }
+                                    return `${context.dataset.label}: 密度 ${context.parsed.y.toFixed(4)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: distScaleState.xScale,
+                            title: {
+                                display: true,
+                                text: `${T}年後の資産倍率 (元本=1${distScaleState.xScale === 'logarithmic' ? '、対数軸' : '、線形軸'})`,
+                                font: { size: 13 }
+                            },
+                            min: distScaleState.xScale === 'linear' ? 0 : undefined,
+                            max: distScaleState.xScale === 'linear' ? Math.min(Math.max(10, T * 2), 50) : undefined,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 10) return value.toFixed(0);
+                                    if (value >= 1) return value.toFixed(1);
+                                    if (value >= 0.1) return value.toFixed(2);
+                                    return value.toFixed(3);
+                                }
+                            }
+                        },
+                        y: {
+                            type: distScaleState.yScale,
+                            title: {
+                                display: true,
+                                text: `確率密度${distScaleState.yScale === 'logarithmic' ? '（対数軸）' : ''}`,
+                                font: { size: 13 }
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+        
+        // Chart.jsで勝敗円グラフを描画する関数
+        function updateWinLossChart(finalValues1, finalValuesL, L, T, numSimulations) {
+            // 既存のチャートを破棄
+            if (winLossChart) {
+                winLossChart.destroy();
+            }
+            
+            // 勝敗を計算
+            let leverageWins = 0;
+            let normalWins = 0;
+            let ties = 0;
+            
+            // デバッグ情報
+            console.log('=== 勝敗計算デバッグ ===');
+            console.log('試行回数:', finalValues1.length);
+            console.log('最初の20試行の結果:');
+            for (let i = 0; i < Math.min(20, finalValues1.length); i++) {
+                const ratio1 = finalValues1[i] / 100;
+                const ratioL = finalValuesL[i] / 100;
+                const winner = finalValuesL[i] > finalValues1[i] ? 'L=' + L : 'L=1';
+                console.log(`試行${i+1}: L=1=${finalValues1[i].toFixed(2)}万円(${ratio1.toFixed(2)}x), L=${L}=${finalValuesL[i].toFixed(2)}万円(${ratioL.toFixed(2)}x), 勝者=${winner}`);
+            }
+            
+            // 全試行の統計
+            const allRatios1 = finalValues1.map(v => v / 100);
+            const allRatiosL = finalValuesL.map(v => v / 100);
+            const avgRatio1 = allRatios1.reduce((a, b) => a + b, 0) / allRatios1.length;
+            const avgRatioL = allRatiosL.reduce((a, b) => a + b, 0) / allRatiosL.length;
+            console.log('全試行の平均倍率 L=1:', avgRatio1.toFixed(3) + 'x');
+            console.log('全試行の平均倍率 L=' + L + ':', avgRatioL.toFixed(3) + 'x');
+            
+            for (let i = 0; i < finalValues1.length; i++) {
+                if (finalValuesL[i] > finalValues1[i]) {
+                    leverageWins++;
+                } else if (finalValuesL[i] < finalValues1[i]) {
+                    normalWins++;
+                } else {
+                    ties++;
+                }
+            }
+            
+            console.log('レバレッジETF勝利:', leverageWins);
+            console.log('通常ETF勝利:', normalWins);
+            console.log('引き分け:', ties);
+            
+            // 理論的な中央値を計算（100万円ベース）
+            const params1 = getParams(1, parseFloat(document.getElementById('mu').value), 
+                                     parseFloat(document.getElementById('sigma').value),
+                                     parseFloat(document.getElementById('b').value),
+                                     parseFloat(document.getElementById('c').value), T);
+            const paramsL = getParams(L, parseFloat(document.getElementById('mu').value),
+                                     parseFloat(document.getElementById('sigma').value),
+                                     parseFloat(document.getElementById('b').value),
+                                     parseFloat(document.getElementById('c').value), T);
+            
+            const theoreticalMedian1 = 100 * Math.exp(params1.alpha);
+            const theoreticalMedianL = 100 * Math.exp(paramsL.alpha);
+            
+            console.log('\n=== 理論値との比較 ===');
+            console.log('理論中央値 L=1:', theoreticalMedian1.toFixed(2) + '万円 (' + (theoreticalMedian1/100).toFixed(3) + 'x)');
+            console.log('理論中央値 L=' + L + ':', theoreticalMedianL.toFixed(2) + '万円 (' + (theoreticalMedianL/100).toFixed(3) + 'x)');
+            console.log('理論中央値比:', (theoreticalMedianL / theoreticalMedian1).toFixed(3));
+            
+            // 実測中央値
+            const sortedValues1 = [...finalValues1].sort((a, b) => a - b);
+            const sortedValuesL = [...finalValuesL].sort((a, b) => a - b);
+            const actualMedian1 = sortedValues1[Math.floor(sortedValues1.length / 2)];
+            const actualMedianL = sortedValuesL[Math.floor(sortedValuesL.length / 2)];
+            console.log('実測中央値 L=1:', actualMedian1.toFixed(2) + '万円 (' + (actualMedian1/100).toFixed(3) + 'x)');
+            console.log('実測中央値 L=' + L + ':', actualMedianL.toFixed(2) + '万円 (' + (actualMedianL/100).toFixed(3) + 'x)');
+            
+            if (theoreticalMedianL > theoreticalMedian1) {
+                console.log('✓ 理論的には、レバレッジETFの中央値の方が高い → 勝率50%以上が期待される');
+            } else {
+                console.log('✓ 理論的には、通常ETFの中央値の方が高い → レバレッジETF勝率50%以下が期待される');
+            }
+            
+            const expectedWinRate = theoreticalMedianL > theoreticalMedian1 ? '> 50%' : '< 50%';
+            console.log('期待される勝率（理論値）:', expectedWinRate);
+            
+            const totalTrials = leverageWins + normalWins + ties;
+            const leverageWinRate = (leverageWins / totalTrials * 100).toFixed(1);
+            const normalWinRate = (normalWins / totalTrials * 100).toFixed(1);
+            
+            console.log('\n=== 最終結果 ===');
+            console.log('レバレッジETF勝率（実測）:', leverageWinRate + '%');
+            console.log('通常ETF勝率（実測）:', normalWinRate + '%');
+            
+            // 理論値との整合性チェック
+            const theoreticalExpectedWinRate = theoreticalMedianL > theoreticalMedian1 ? '> 50%' : '< 50%';
+            const actualIsConsistent = (theoreticalMedianL > theoreticalMedian1 && leverageWins > normalWins) ||
+                                      (theoreticalMedianL < theoreticalMedian1 && leverageWins < normalWins);
+            
+            if (actualIsConsistent) {
+                console.log('✓ 結果は理論値と整合している（期待: ' + theoreticalExpectedWinRate + '）');
+            } else {
+                console.log('⚠️ 結果が理論値と不整合（期待: ' + theoreticalExpectedWinRate + '、実測: ' + leverageWinRate + '%）');
+                console.log('   試行回数を増やすと理論値に近づきます');
+            }
+            console.log('==================\n');
+            
+            // UI更新
+            document.getElementById('chart4-win-simulations').textContent = totalTrials;
+            document.getElementById('chart4-period-display').textContent = T;
+            document.getElementById('win-L-display').textContent = L.toFixed(1);
+            document.getElementById('win-L-display2').textContent = L.toFixed(1);
+            document.getElementById('leverage-wins').textContent = leverageWins + '回';
+            document.getElementById('normal-wins').textContent = normalWins + '回';
+            document.getElementById('leverage-win-rate').textContent = leverageWinRate + '%';
+            document.getElementById('normal-win-rate').textContent = normalWinRate + '%';
+            
+            // Chart.jsで円グラフを描画
+            const ctx = document.getElementById('win-loss-chart').getContext('2d');
+            
+            winLossChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: [
+                        `L=${L.toFixed(1)} 勝利 (${leverageWinRate}%)`,
+                        `L=1 勝利 (${normalWinRate}%)`
+                    ],
+                    datasets: [{
+                        data: [leverageWins, normalWins],
+                        backgroundColor: [
+                            'rgba(255, 140, 0, 0.8)',
+                            'rgba(0, 100, 255, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 140, 0, 1)',
+                            'rgba(0, 100, 255, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                font: { size: 13 },
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value}回`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // グラフ5: 破産確率の棒グラフを更新する関数
+        function updateBankruptcyChart(finalValues1, finalValuesL, L, T, numSimulations, initialValue) {
+            // 既存のチャートを破棄
+            if (bankruptcyChart) {
+                bankruptcyChart.destroy();
+            }
+            
+            // 破産の定義: 資産が初期値の1/4以下になること
+            const bankruptcyThreshold = initialValue / 4;
+            
+            // 破産回数をカウント
+            const normalBankruptcyCount = finalValues1.filter(v => v <= bankruptcyThreshold).length;
+            const leverageBankruptcyCount = finalValuesL.filter(v => v <= bankruptcyThreshold).length;
+            
+            // 破産確率を計算（パーセンテージ）
+            const normalBankruptcyRate = ((normalBankruptcyCount / numSimulations) * 100).toFixed(1);
+            const leverageBankruptcyRate = ((leverageBankruptcyCount / numSimulations) * 100).toFixed(1);
+            
+            // デバッグ情報をコンソールに出力
+            console.log('\n========== 破産確率分析 ==========');
+            console.log('期間: ' + T + '年');
+            console.log('試行回数: ' + numSimulations + '回');
+            console.log('初期投資額: ' + initialValue + '万円');
+            console.log('破産基準: ' + bankruptcyThreshold + '万円以下（初期値の1/4）');
+            console.log('\nL=1 通常ETF:');
+            console.log('  破産回数: ' + normalBankruptcyCount + '回');
+            console.log('  破産確率: ' + normalBankruptcyRate + '%');
+            console.log('\nL=' + L + ' レバレッジETF:');
+            console.log('  破産回数: ' + leverageBankruptcyCount + '回');
+            console.log('  破産確率: ' + leverageBankruptcyRate + '%');
+            console.log('\n破産リスク差: ' + (leverageBankruptcyRate - normalBankruptcyRate).toFixed(1) + '% ポイント');
+            console.log('==================\n');
+            
+            // UI更新
+            document.getElementById('chart5-simulations').textContent = numSimulations;
+            document.getElementById('chart5-period-display').textContent = T;
+            document.getElementById('bankruptcy-L-display').textContent = L.toFixed(1);
+            document.getElementById('normal-bankruptcy-rate').textContent = normalBankruptcyRate + '%';
+            document.getElementById('normal-bankruptcy-count').textContent = normalBankruptcyCount + '回';
+            document.getElementById('leverage-bankruptcy-rate').textContent = leverageBankruptcyRate + '%';
+            document.getElementById('leverage-bankruptcy-count').textContent = leverageBankruptcyCount + '回';
+            
+            // Chart.jsで棒グラフを描画
+            const ctx = document.getElementById('bankruptcy-chart').getContext('2d');
+            
+            bankruptcyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['L=1 通常ETF', `L=${L.toFixed(1)} レバレッジETF`],
+                    datasets: [{
+                        label: '破産確率 (%)',
+                        data: [parseFloat(normalBankruptcyRate), parseFloat(leverageBankruptcyRate)],
+                        backgroundColor: [
+                            'rgba(0, 100, 255, 0.7)',
+                            'rgba(255, 140, 0, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(0, 100, 255, 1)',
+                            'rgba(255, 140, 0, 1)'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: '破産確率 (%)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'ETFタイプ',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    const index = context.dataIndex;
+                                    const count = index === 0 ? normalBankruptcyCount : leverageBankruptcyCount;
+                                    return [
+                                        '破産確率: ' + value.toFixed(1) + '%',
+                                        '破産回数: ' + count + '/' + numSimulations + '回'
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // スケール切り替え機能
+        window.isLogScale = true; // デフォルトは対数スケール
+        
+        document.getElementById('toggle-log-scale').addEventListener('click', function() {
+            window.isLogScale = !window.isLogScale;
+            
+            const button = document.getElementById('toggle-log-scale');
+            button.textContent = window.isLogScale ? '線形スケールに切替' : '対数スケールに切替';
+            
+            if (window.montecarloData) {
+                const yAxisConfig = window.isLogScale 
+                    ? { title: '資産額 (万円)', type: 'log' }
+                    : { title: '資産額 (万円)', type: 'linear', range: [0, window.linearYMax || 1000] };
+                
+                const layout = {
+                    xaxis: { title: '投資年数', range: [0, window.montecarloT] },
+                    yaxis: yAxisConfig,
+                    showlegend: true,
+                    legend: { x: 0.02, y: 0.98 },
+                    margin: { l: 60, r: 20, t: 20, b: 60 },
+                    height: 500
+                };
+                
+                Plotly.newPlot('montecarlo-chart', window.montecarloData, layout, {responsive: true});
+            }
+        });
+        
+        // パラメータ値の表示のみ更新する関数
+        function updateDisplayValues() {
+            const T = parseInt(document.getElementById('T').value);
+            const L = parseFloat(document.getElementById('L').value);
+            const mu = parseFloat(document.getElementById('mu').value);
+            const sigma = parseFloat(document.getElementById('sigma').value);
+            const b = parseFloat(document.getElementById('b').value);
+            const c = parseFloat(document.getElementById('c').value);
+            const numSimulations = parseInt(document.getElementById('simulations').value);
+            const yMax = parseInt(document.getElementById('ymax').value);
+            
+            document.getElementById('T-value').textContent = T;
+            document.getElementById('L-value').textContent = L.toFixed(1);
+            document.getElementById('mu-value').textContent = mu.toFixed(2);
+            document.getElementById('sigma-value').textContent = sigma.toFixed(2);
+            document.getElementById('b-value').textContent = b.toFixed(3);
+            document.getElementById('c-value').textContent = c.toFixed(4);
+            document.getElementById('simulations-value').textContent = numSimulations;
+            document.getElementById('ymax-value').textContent = yMax;
+        }
+        
+        // イベントリスナー設定（値の表示のみ更新）
+        const inputs = ['T', 'L', 'mu', 'sigma', 'b', 'c', 'simulations', 'ymax'];
+        inputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', updateDisplayValues);
+        });
+        
+        // シミュレーション実行ボタン
+        document.getElementById('run-simulation').addEventListener('click', function() {
+            const button = document.getElementById('run-simulation');
+            const loading = document.getElementById('loading');
+            
+            // ボタンを無効化
+            button.disabled = true;
+            button.textContent = '⏳ 実行中...';
+            loading.style.display = 'block';
+            
+            // 少し遅延させてUIを更新
+            setTimeout(() => {
+                updateCharts();
+                
+                // 完了後にボタンを有効化
+                button.disabled = false;
+                button.textContent = '🚀 シミュレーション実行';
+                loading.style.display = 'none';
+            }, 100);
+        });
+        
+        // グラフ4のX軸スケール切り替え
+        document.getElementById('toggle-dist-x-scale').addEventListener('click', function() {
+            distScaleState.xScale = distScaleState.xScale === 'logarithmic' ? 'linear' : 'logarithmic';
+            this.textContent = distScaleState.xScale === 'logarithmic' ? 'X軸: 線形に切替' : 'X軸: 対数に切替';
+            
+            // グラフを再描画（最後のシミュレーション結果を使用）
+            if (window.lastDistributionData) {
+                updateDistributionChart(
+                    window.lastDistributionData.finalRatios1,
+                    window.lastDistributionData.finalRatiosL,
+                    window.lastDistributionData.L,
+                    window.lastDistributionData.T,
+                    window.lastDistributionData.params1,
+                    window.lastDistributionData.paramsL,
+                    window.lastDistributionData.theoryMean1,
+                    window.lastDistributionData.theoryMedian1,
+                    window.lastDistributionData.theoryMeanL,
+                    window.lastDistributionData.theoryMedianL
+                );
+            }
+        });
+        
+        // グラフ4のY軸スケール切り替え
+        document.getElementById('toggle-dist-y-scale').addEventListener('click', function() {
+            distScaleState.yScale = distScaleState.yScale === 'linear' ? 'logarithmic' : 'linear';
+            this.textContent = distScaleState.yScale === 'linear' ? 'Y軸: 対数に切替' : 'Y軸: 線形に切替';
+            
+            // グラフを再描画（最後のシミュレーション結果を使用）
+            if (window.lastDistributionData) {
+                updateDistributionChart(
+                    window.lastDistributionData.finalRatios1,
+                    window.lastDistributionData.finalRatiosL,
+                    window.lastDistributionData.L,
+                    window.lastDistributionData.T,
+                    window.lastDistributionData.params1,
+                    window.lastDistributionData.paramsL,
+                    window.lastDistributionData.theoryMean1,
+                    window.lastDistributionData.theoryMedian1,
+                    window.lastDistributionData.theoryMeanL,
+                    window.lastDistributionData.theoryMedianL
+                );
+            }
+        });
+        
+        // 初期描画
+        updateCharts();
+        
+        // MathJaxの数式を表示
+        function renderFormula() {
+            const formulaDiv = document.getElementById('formula-display');
+            formulaDiv.innerHTML = '\\[\\approx R^L \\times e^{-\\frac{1}{2}L(L-1)\\sigma^2} \\times e^{-(L-1)b} \\times e^{-c}\\]';
+            
+            document.getElementById('label-1').innerHTML = '\\(R^L\\)';
+            document.getElementById('label-2').innerHTML = '\\(e^{-\\frac{1}{2}L(L-1)\\sigma^2}\\)';
+            document.getElementById('label-3').innerHTML = '\\(e^{-(L-1)b}\\)';
+            document.getElementById('label-4').innerHTML = '\\(e^{-c}\\)';
+            
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        }
+        
+        // ページ読み込み時に数式をレンダリング
+        window.addEventListener('load', renderFormula);
+    </script>
+</body>
+</html>
